@@ -9,6 +9,7 @@ function App() {
 	const [isThinking, setIsThinking] = useState(false);
 	const [mood, setMood] = useState("neutral");
 	const [time, setTime] = useState(new Date());
+	const [liveTranscript, setLiveTranscript] = useState("");
 
 	const getReply = async (userMessage) => {
 		try {
@@ -25,6 +26,7 @@ function App() {
 			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply }]);
 			setIsThinking(false);
 
+			// Mood detection
 			if (/sleep|tired|low power/i.test(reply)) setMood("sleepy");
 			else if (/angry|mad|frustrated|grr/i.test(reply)) setMood("angry");
 			else if (/yay|good|happy|awesome|online/i.test(reply)) setMood("happy");
@@ -37,38 +39,50 @@ function App() {
 	};
 
 	useEffect(() => {
-		getReply("Hello, Spanky. Status report?");
-
-		if (import.meta.env.DEV) {
-			const interval = setInterval(() => {
-				getReply("Hello, Spanky. Status report?");
-			}, 30000);
-			return () => clearInterval(interval);
-		}
+		setLog((prev) => [...prev.slice(-3), { user: null, reply: "Spanky online. Systems nominal." }]);
+		setMood("happy");
 	}, []);
 
-	// Voice command support
+	useEffect(() => {
+		const tick = setInterval(() => setTime(new Date()), 1000);
+		return () => clearInterval(tick);
+	}, []);
+
+	// Voice command with live transcript
 	const startListening = () => {
 		if (!recognition) {
 			alert("Voice recognition not supported on this device.");
 			return;
 		}
+		setMood("listening");
 		recognition.lang = "en-US";
-		recognition.interimResults = false;
+		recognition.interimResults = true;
 		recognition.maxAlternatives = 1;
 
 		recognition.start();
 
 		recognition.onresult = (event) => {
-			const transcript = event.results[0][0].transcript;
-			getReply(transcript);
+			const transcript = Array.from(event.results)
+				.map((r) => r[0].transcript)
+				.join("");
+
+			setLiveTranscript(transcript);
+
+			if (event.results[0].isFinal) {
+				getReply(transcript);
+				setLiveTranscript("");
+				setMood("neutral");
+			}
 		};
 
 		recognition.onerror = (event) => {
 			console.error("Speech recognition error:", event.error);
+			setLiveTranscript("");
+			setMood("neutral");
 		};
 	};
 
+	// Double-tap to refresh
 	useEffect(() => {
 		let lastTap = 0;
 		const handleTap = () => {
@@ -86,7 +100,7 @@ function App() {
 		<div className="app">
 			<div className="clock">{time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
 
-			{import.meta.env.DEV && <div className="dev-banner">[DEV] Auto-refreshing every 30s</div>}
+			{import.meta.env.DEV && <div className="dev-banner">[DEV] Double-tap to refresh</div>}
 
 			<div className="eyes">
 				<div className={`eye left ${isThinking ? "blinking" : ""} ${mood}`}></div>
@@ -94,6 +108,8 @@ function App() {
 			</div>
 
 			<div className="log-overlay">
+				{liveTranscript && <div className="live-transcript">{liveTranscript}</div>}
+
 				{[...log]
 					.slice(-4)
 					.reverse()
