@@ -39,7 +39,9 @@ html, body {
   animation: blink 6s infinite;
 }
 
-
+.eye.blinking {
+  animation: blink 0.4s alternate infinite;
+}
 
 @keyframes blink {
   0%, 90%, 100% { opacity: 1; }
@@ -55,4 +57,25 @@ html, body {
 
 .log-line {
   margin: 0.3rem 0;
+}
+
+.clock {
+  position: absolute;
+  top: 0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.2rem;
+  color: #00ffe1;
+  font-family: 'Courier New', monospace;
+  opacity: 0.7;
+}
+
+.dev-banner {
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  color: #00ffe1;
+  opacity: 0.5;
 }
