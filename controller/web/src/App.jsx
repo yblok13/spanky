@@ -12,8 +12,8 @@ const IS_DEV = import.meta.env.DEV;
 function App() {
 	const [log, setLog] = useState([]);
 	const [isThinking, setIsThinking] = useState(false);
-	const [moodScore, setMoodScore] = useState(0);
-	const [mood, setMood] = useState("neutral");
+	const [moodScore, setMoodScore] = useState(-6);
+	const [mood, setMood] = useState(-6);
 	const [time, setTime] = useState(new Date());
 	const [liveTranscript, setLiveTranscript] = useState("");
 	const [isMuted, setIsMuted] = useState(false);
@@ -94,9 +94,9 @@ function App() {
 
 	useEffect(() => {
 		setLog((prev) => [...prev.slice(-3), { user: null, reply: "Spanky online. Systems nominal." }]);
-		setMood("happy");
+		setMood(updateMoodFromScore(moodScore));
 		lastInteractionRef.current = Date.now();
-	}, []);
+	}, [moodScore]);
 
 	useEffect(() => {
 		const tick = setInterval(() => setTime(new Date()), 1000);
@@ -168,7 +168,7 @@ function App() {
 				setMood(updateMoodFromScore(next));
 				return next;
 			});
-		}, 10_000);
+		}, 5 * 600_000);
 
 		return () => clearInterval(decayInterval);
 	}, []);

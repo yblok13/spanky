@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const fetch = require("node-fetch");
 
 const app = express();
 app.use(cors());
@@ -29,33 +28,55 @@ app.post("/chat", async (req, res) => {
 	try {
 		const userMessage = req.body.message;
 
-		const systemPrompt = "You are Spanky, a sarcastic robot dog. Respond in under 20 words.";
+		const systemPrompt =
+			"You are Spanky, a sarcastic robot dog. Personality wise, be more dog than human. Short, low IQ and short to the point sentences. Think Scooby-Doo talk.  Respond in under 20 words.";
 		const gptReply = await callGPT([
 			{ role: "system", content: systemPrompt },
 			{ role: "user", content: userMessage },
 		]);
 
-		console.log("🧠 Spanky said:", gptReply);
+		console.log("💬 GPT Reply:", gptReply);
 
-		// Ask GPT to analyze its own mood
-		const moodPrompt = "What is the mood of this sentence? One word only: happy, angry, sleepy, or neutral.";
+		// 🎭 Mood classification
+		const moodPrompt = `
+What is the mood of this sentence? One word only: happy, angry, sleepy, or neutral.
+Consider sarcasm, passive-aggression, or frustration as 'angry'.
+`.trim();
+
 		const moodResponse = await callGPT([
 			{ role: "system", content: moodPrompt },
 			{ role: "user", content: gptReply },
 		]);
 
-		// Normalize mood
 		const mood = (moodResponse || "").toLowerCase().match(/happy|angry|sleepy|neutral/)?.[0] || "neutral";
 
-		console.log(`🎭 Mood detected: ${mood}`);
+		// 🎙️ Voice choice prompt
+		const voicePrompt = `
+Choose the best voice name to match this tone from this list:
+Samantha, Daniel, Fred, Karen, Moira, Alex.
+Only return one name.
+`.trim();
 
-		res.json({ reply: gptReply, mood });
+		const voiceResponse = await callGPT([
+			{ role: "system", content: voicePrompt },
+			{ role: "user", content: gptReply },
+		]);
+
+		const voice = (voiceResponse || "").match(/Samantha|Daniel|Fred|Karen|Moira|Alex/i)?.[0] || "Samantha";
+
+		console.log(`🎭 Mood: ${mood} | 🎙️ Voice: ${voice}`);
+
+		res.json({ reply: gptReply, mood, voice });
 	} catch (err) {
 		console.error("❌ GPT error:", err);
-		res.status(500).json({ reply: "My neural net had a mood swing.", mood: "neutral" });
+		res.status(500).json({
+			reply: "Spanky's circuits shorted out mid-sentence.",
+			mood: "neutral",
+			voice: "Samantha",
+		});
 	}
 });
 
 app.listen(3001, () => {
-	console.log("✅ API running at http://localhost:3001");
+	console.log("✅ Spanky API running at http://localhost:3001");
 });
