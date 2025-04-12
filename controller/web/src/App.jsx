@@ -1,70 +1,85 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
 function App() {
 	const [log, setLog] = useState([]);
-	const [isThinking, setIsThinking] = useState(true);
+	const [isThinking, setIsThinking] = useState(false);
 	const [mood, setMood] = useState("neutral");
 	const [time, setTime] = useState(new Date());
 
-	useEffect(() => {
-		let lastTap = 0;
-
-		const handleTap = () => {
-			const now = Date.now();
-			if (now - lastTap < 300) {
-				// Double tap detected
-				window.location.reload();
-			}
-			lastTap = now;
-		};
-
-		if (import.meta.env.DEV) {
-			window.addEventListener("touchend", handleTap);
-			return () => window.removeEventListener("touchend", handleTap);
-		}
-	}, []);
-
-	const getReply = async () => {
+	const getReply = async (userMessage) => {
 		try {
 			setIsThinking(true);
 			const res = await fetch("http://10.0.0.164:3001/chat", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ message: "Hello, Spanky. Status report?" }),
+				body: JSON.stringify({ message: userMessage }),
 			});
 
 			const data = await res.json();
 			const reply = data.reply;
-			setLog((prev) => [...prev.slice(-3), { user: "Hello, Spanky. Status report?", reply }]);
+
+			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply }]);
 			setIsThinking(false);
 
-			// Mood detection
 			if (/sleep|tired|low power/i.test(reply)) setMood("sleepy");
 			else if (/angry|mad|frustrated|grr/i.test(reply)) setMood("angry");
 			else if (/yay|good|happy|awesome|online/i.test(reply)) setMood("happy");
 			else setMood("neutral");
 		} catch (err) {
-			setLog((prev) => [...prev.slice(-3), { user: "Hello, Spanky. Status report?", reply: "Spanky's brain is offline." }]);
+			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply: "Spanky's brain is offline." }]);
 			setMood("offline");
 			setIsThinking(false);
 		}
 	};
 
 	useEffect(() => {
-		getReply();
+		getReply("Hello, Spanky. Status report?");
 
 		if (import.meta.env.DEV) {
 			const interval = setInterval(() => {
-				getReply();
+				getReply("Hello, Spanky. Status report?");
 			}, 30000);
 			return () => clearInterval(interval);
 		}
 	}, []);
 
+	// Voice command support
+	const startListening = () => {
+		if (!recognition) {
+			alert("Voice recognition not supported on this device.");
+			return;
+		}
+		recognition.lang = "en-US";
+		recognition.interimResults = false;
+		recognition.maxAlternatives = 1;
+
+		recognition.start();
+
+		recognition.onresult = (event) => {
+			const transcript = event.results[0][0].transcript;
+			getReply(transcript);
+		};
+
+		recognition.onerror = (event) => {
+			console.error("Speech recognition error:", event.error);
+		};
+	};
+
 	useEffect(() => {
-		const tick = setInterval(() => setTime(new Date()), 1000);
-		return () => clearInterval(tick);
+		let lastTap = 0;
+		const handleTap = () => {
+			const now = Date.now();
+			if (now - lastTap < 300) {
+				window.location.reload();
+			}
+			lastTap = now;
+		};
+		window.addEventListener("touchend", handleTap);
+		return () => window.removeEventListener("touchend", handleTap);
 	}, []);
 
 	return (
@@ -89,6 +104,10 @@ function App() {
 						</div>
 					))}
 			</div>
+
+			<button className="mic-btn" onClick={startListening}>
+				🎙️
+			</button>
 		</div>
 	);
 }

@@ -138,3 +138,16 @@ html, body {
   margin-bottom: -0.2rem; /* tighter spacing */
   line-height: 1.2;
 }
+
+.mic-btn {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  color: #00ffe1;
+  cursor: pointer;
+  opacity: 0.6;
+  z-index: 3;
+}
