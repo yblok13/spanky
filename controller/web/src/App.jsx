@@ -10,6 +10,54 @@ function App() {
 	const [mood, setMood] = useState("neutral");
 	const [time, setTime] = useState(new Date());
 	const [liveTranscript, setLiveTranscript] = useState("");
+	const [isMuted, setIsMuted] = useState(false);
+
+	// 🔊 Prime speech so Safari allows voice later
+	const primeSpeech = () => {
+		if (!window.speechSynthesis) return;
+		const u = new SpeechSynthesisUtterance("init");
+		u.volume = 0; // mute it
+		window.speechSynthesis.speak(u);
+	};
+
+	// 🔊 Speak actual reply
+	const speak = (text) => {
+		if (!text || !window.speechSynthesis) return;
+
+		const speakNow = () => {
+			const utterance = new SpeechSynthesisUtterance(text);
+			utterance.lang = "en-US";
+			utterance.pitch = 1;
+			utterance.rate = 1;
+			utterance.volume = 1;
+			window.speechSynthesis.cancel();
+			window.speechSynthesis.speak(utterance);
+		};
+
+		if (speechSynthesis.getVoices().length === 0) {
+			speechSynthesis.onvoiceschanged = speakNow;
+		} else {
+			speakNow();
+		}
+	};
+
+	// Check if speech is possible
+	useEffect(() => {
+		if (!window.speechSynthesis) {
+			setIsMuted(true);
+			return;
+		}
+
+		const checkVoices = () => {
+			const voices = speechSynthesis.getVoices();
+			if (!voices || voices.length === 0) {
+				setIsMuted(true);
+			}
+		};
+
+		checkVoices();
+		speechSynthesis.onvoiceschanged = checkVoices;
+	}, []);
 
 	const getReply = async (userMessage) => {
 		try {
@@ -25,16 +73,18 @@ function App() {
 
 			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply }]);
 			setIsThinking(false);
+			if (!isMuted) speak(reply);
 
-			// Mood detection
 			if (/sleep|tired|low power/i.test(reply)) setMood("sleepy");
 			else if (/angry|mad|frustrated|grr/i.test(reply)) setMood("angry");
 			else if (/yay|good|happy|awesome|online/i.test(reply)) setMood("happy");
 			else setMood("neutral");
 		} catch (err) {
-			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply: "Spanky's brain is offline." }]);
+			const reply = "Spanky's brain is offline.";
+			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply }]);
 			setMood("offline");
 			setIsThinking(false);
+			if (!isMuted) speak(reply);
 		}
 	};
 
@@ -48,12 +98,14 @@ function App() {
 		return () => clearInterval(tick);
 	}, []);
 
-	// Voice command with live transcript
 	const startListening = () => {
+		primeSpeech(); // 👈 Unlock speech support on iOS
+
 		if (!recognition) {
 			alert("Voice recognition not supported on this device.");
 			return;
 		}
+
 		setMood("listening");
 		recognition.lang = "en-US";
 		recognition.interimResults = true;
@@ -82,7 +134,6 @@ function App() {
 		};
 	};
 
-	// Double-tap to refresh
 	useEffect(() => {
 		let lastTap = 0;
 		const handleTap = () => {
@@ -98,6 +149,8 @@ function App() {
 
 	return (
 		<div className="app">
+			{isMuted && <div className="mute-icon">🔇</div>}
+
 			<div className="clock">{time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
 
 			{import.meta.env.DEV && <div className="dev-banner">[DEV] Double-tap to refresh</div>}

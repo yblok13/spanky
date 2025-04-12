@@ -26,6 +26,7 @@ app.post("/chat", async (req, res) => {
 		});
 
 		const reply = response.data.choices[0].message.content;
+    console.log("Spanky says:", reply);
 		res.json({ reply });
 	} catch (err) {
 		console.error("Error talking to GPT4All:", err.message);
