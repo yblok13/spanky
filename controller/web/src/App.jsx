@@ -7,6 +7,24 @@ function App() {
 	const [mood, setMood] = useState("neutral");
 	const [time, setTime] = useState(new Date());
 
+	useEffect(() => {
+		let lastTap = 0;
+
+		const handleTap = () => {
+			const now = Date.now();
+			if (now - lastTap < 300) {
+				// Double tap detected
+				window.location.reload();
+			}
+			lastTap = now;
+		};
+
+		if (import.meta.env.DEV) {
+			window.addEventListener("touchend", handleTap);
+			return () => window.removeEventListener("touchend", handleTap);
+		}
+	}, []);
+
 	const getReply = async () => {
 		try {
 			setIsThinking(true);
@@ -18,7 +36,7 @@ function App() {
 
 			const data = await res.json();
 			const reply = data.reply;
-			setLog((prev) => [...prev.slice(-3), reply]);
+			setLog((prev) => [...prev.slice(-3), { user: "Hello, Spanky. Status report?", reply }]);
 			setIsThinking(false);
 
 			// Mood detection
@@ -27,7 +45,7 @@ function App() {
 			else if (/yay|good|happy|awesome|online/i.test(reply)) setMood("happy");
 			else setMood("neutral");
 		} catch (err) {
-			setLog((prev) => [...prev.slice(-3), "Spanky's brain is offline."]);
+			setLog((prev) => [...prev.slice(-3), { user: "Hello, Spanky. Status report?", reply: "Spanky's brain is offline." }]);
 			setMood("offline");
 			setIsThinking(false);
 		}
@@ -65,8 +83,9 @@ function App() {
 					.slice(-4)
 					.reverse()
 					.map((line, i) => (
-						<div key={i} className={`log-line fade-${i}`}>
-							{line}
+						<div key={i} className={`log-entry fade-${i}`}>
+							{line.user && <div className="user-message">{line.user}</div>}
+							<div className="log-line">{line.reply}</div>
 						</div>
 					))}
 			</div>
