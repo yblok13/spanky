@@ -14,20 +14,41 @@ html, body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 1rem;
-  box-sizing: border-box;
+  position: relative;
+}
+
+.clock {
+  position: absolute;
+  top: 0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.2rem;
+  opacity: 0.7;
+  z-index: 2;
+}
+
+.dev-banner {
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8rem;
+  opacity: 0.5;
+  z-index: 2;
 }
 
 .eyes {
   display: flex;
-  gap: 30vw; /* was 8vw */
-  flex-grow: 1;
-  align-items: center;
+  gap: 20vw; /* or however wide you prefer */
   justify-content: center;
-  width: 100%;
+  align-items: center;
+  margin-top: -20vh;  /* 👈 pushes them up slightly */
+  flex-grow: 0;
+  z-index: 1;
 }
+
 
 .eye {
   width: 30vw;
@@ -48,34 +69,57 @@ html, body {
   95% { opacity: 0; }
 }
 
-.log {
-  width: 100%;
-  text-align: center;
-  font-size: 1.4rem;
-  margin-bottom: 0.5rem;
+/* Mood Styles */
+.eye.happy {
+  box-shadow: 0 0 20px #00ffcc;
 }
 
-.log-line {
-  margin: 0.3rem 0;
+.eye.angry {
+  background: radial-gradient(circle, #ff4b4b 0%, #aa0000 60%, transparent 70%);
+  box-shadow: 0 0 15px #ff4b4b;
 }
 
-.clock {
-  position: absolute;
-  top: 0.6rem;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 1.2rem;
-  color: #00ffe1;
-  font-family: 'Courier New', monospace;
-  opacity: 0.7;
-}
-
-.dev-banner {
-  position: absolute;
-  top: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.8rem;
-  color: #00ffe1;
+.eye.sleepy {
+  background: radial-gradient(circle, #005577 0%, #001f2f 60%, transparent 70%);
   opacity: 0.5;
 }
+
+.eye.offline {
+  background: radial-gradient(circle, #ff0000 0%, #330000 60%, transparent 70%);
+  opacity: 0.6;
+  animation: pulseOffline 1s ease-in-out infinite;
+}
+
+@keyframes pulseOffline {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.95); }
+}
+
+/* Thought Log in Background */
+.log-overlay {
+  position: absolute;
+  bottom: 4vh;
+  width: 100%;
+  pointer-events: none;
+  z-index: 0;
+  display: flex;
+  flex-direction: column-reverse; /* 👈 newest on bottom */
+  align-items: center;
+  padding: 0 1rem;
+}
+
+
+.log-line {
+  font-size: 1.1rem;
+  color: #00ffe1;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 5px #00ffe155;
+  margin: 0.3rem 0;
+  opacity: 1;
+  transition: opacity 2s ease-in-out;
+}
+
+.fade-0 { opacity: 1; transform: translateY(0); }
+.fade-1 { opacity: 0.6; transform: translateY(-5px); }
+.fade-2 { opacity: 0.3; transform: translateY(-10px); }
+.fade-3 { opacity: 0.1; transform: translateY(-15px); }

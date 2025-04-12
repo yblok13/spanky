@@ -4,22 +4,31 @@ import "./App.css";
 function App() {
 	const [log, setLog] = useState([]);
 	const [isThinking, setIsThinking] = useState(true);
+	const [mood, setMood] = useState("neutral");
 	const [time, setTime] = useState(new Date());
 
 	const getReply = async () => {
 		try {
 			setIsThinking(true);
-			const res = await fetch("http://localhost:3001/chat", {
+			const res = await fetch("http://10.0.0.164:3001/chat", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ message: "Hello, Spanky. Status report?" }),
 			});
 
 			const data = await res.json();
-			setLog((prev) => [...prev.slice(-2), data.reply]);
+			const reply = data.reply;
+			setLog((prev) => [...prev.slice(-3), reply]);
 			setIsThinking(false);
+
+			// Mood detection
+			if (/sleep|tired|low power/i.test(reply)) setMood("sleepy");
+			else if (/angry|mad|frustrated|grr/i.test(reply)) setMood("angry");
+			else if (/yay|good|happy|awesome|online/i.test(reply)) setMood("happy");
+			else setMood("neutral");
 		} catch (err) {
-			setLog((prev) => [...prev.slice(-2), "Spanky's brain is offline."]);
+			setLog((prev) => [...prev.slice(-3), "Spanky's brain is offline."]);
+			setMood("offline");
 			setIsThinking(false);
 		}
 	};
@@ -30,7 +39,7 @@ function App() {
 		if (import.meta.env.DEV) {
 			const interval = setInterval(() => {
 				getReply();
-			}, 30000); // refresh every 30s in dev
+			}, 30000);
 			return () => clearInterval(interval);
 		}
 	}, []);
@@ -47,16 +56,19 @@ function App() {
 			{import.meta.env.DEV && <div className="dev-banner">[DEV] Auto-refreshing every 30s</div>}
 
 			<div className="eyes">
-				<div className={`eye left ${isThinking ? "blinking" : ""}`}></div>
-				<div className={`eye right ${isThinking ? "blinking" : ""}`}></div>
+				<div className={`eye left ${isThinking ? "blinking" : ""} ${mood}`}></div>
+				<div className={`eye right ${isThinking ? "blinking" : ""} ${mood}`}></div>
 			</div>
 
-			<div className="log">
-				{log.map((line, i) => (
-					<div key={i} className="log-line">
-						{line}
-					</div>
-				))}
+			<div className="log-overlay">
+				{[...log]
+					.slice(-4)
+					.reverse()
+					.map((line, i) => (
+						<div key={i} className={`log-line fade-${i}`}>
+							{line}
+						</div>
+					))}
 			</div>
 		</div>
 	);
