@@ -1,0 +1,21 @@
+# Node.js
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Vite / React
+dist/
+.vite/
+
+# MacOS system files
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Environment files
+.env
+.env.*
