@@ -4,6 +4,7 @@ import { speak, primeSpeech } from "./logic/speak";
 import { detectMood } from "./logic/mood";
 import { fetchReply } from "./logic/gpt";
 import "./App.css";
+import LogOverlay from "./components/LogOverlay";
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = SpeechRecognition ? new SpeechRecognition() : null;
@@ -152,20 +153,7 @@ function App() {
 			{IS_DEV && <div className="dev-banner">[DEV] Double-tap to refresh</div>}
 
 			<Eyes mood={mood} isThinking={isThinking} />
-
-			<div className="log-overlay">
-				{liveTranscript && <div className="live-transcript">{liveTranscript}</div>}
-
-				{[...log]
-					.slice(-4)
-					.reverse()
-					.map((line, i) => (
-						<div key={i} className={`log-entry fade-${i}`}>
-							{line.user && <div className="user-message">{line.user}</div>}
-							<div className="log-line">{line.reply}</div>
-						</div>
-					))}
-			</div>
+			<LogOverlay log={log} liveTranscript={liveTranscript} />
 
 			<button className="mic-btn" onClick={startListening}>
 				🎙️
