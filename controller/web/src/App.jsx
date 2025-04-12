@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import Eyes from "./components/Eyes";
-import { speak, primeSpeech } from "./logic/speak";
-import { detectMood } from "./logic/mood";
-import { fetchReply } from "./logic/gpt";
-import "./App.css";
 import LogOverlay from "./components/LogOverlay";
 import MicButton from "./components/MicButton";
+import { speak, primeSpeech } from "./logic/speak";
+import "./App.css";
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = SpeechRecognition ? new SpeechRecognition() : null;
@@ -14,6 +12,7 @@ const IS_DEV = import.meta.env.DEV;
 function App() {
 	const [log, setLog] = useState([]);
 	const [isThinking, setIsThinking] = useState(false);
+	const [moodScore, setMoodScore] = useState(0);
 	const [mood, setMood] = useState("neutral");
 	const [time, setTime] = useState(new Date());
 	const [liveTranscript, setLiveTranscript] = useState("");
@@ -24,6 +23,27 @@ function App() {
 
 	const idleTimeout = IS_DEV ? 30_000 : 180_000;
 	const idleCooldown = IS_DEV ? 45_000 : 300_000;
+
+	const updateMoodFromScore = (score) => {
+		if (score >= 5) return "happy";
+		if (score <= -8) return "sleepy";
+		if (score <= -5) return "angry";
+		return "neutral";
+	};
+
+	const adjustMoodScoreFromLabel = (moodLabel) => {
+		let delta = 0;
+		if (moodLabel === "happy") delta = +2;
+		else if (moodLabel === "angry") delta = -3;
+		else if (moodLabel === "sleepy") delta = -2;
+		else delta = 0;
+
+		setMoodScore((prev) => {
+			const next = Math.max(-10, Math.min(10, prev + delta));
+			setMood(updateMoodFromScore(next));
+			return next;
+		});
+	};
 
 	useEffect(() => {
 		if (!window.speechSynthesis) {
@@ -41,7 +61,15 @@ function App() {
 	const getReply = async (userMessage, isIdle = false) => {
 		try {
 			setIsThinking(true);
-			const reply = await fetchReply(userMessage);
+			const res = await fetch("http://10.0.0.164:3001/chat", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ message: userMessage }),
+			});
+
+			const data = await res.json();
+			const reply = data.reply;
+			const moodFromAPI = data.mood;
 
 			setLog((prev) => [
 				...prev.slice(-3),
@@ -52,9 +80,9 @@ function App() {
 			]);
 
 			setIsThinking(false);
-			if (!isMuted) speak(reply);
+			if (!isMuted) speak(reply, moodFromAPI);
 			lastInteractionRef.current = Date.now();
-			setMood(detectMood(reply));
+			adjustMoodScoreFromLabel(moodFromAPI);
 		} catch (err) {
 			const failReply = "Spanky's brain is offline.";
 			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply: failReply }]);
@@ -102,14 +130,14 @@ function App() {
 			if (event.results[0].isFinal) {
 				getReply(transcript);
 				setLiveTranscript("");
-				setMood("neutral");
+				setMood(updateMoodFromScore(moodScore));
 			}
 		};
 
 		recognition.onerror = (event) => {
 			console.error("Speech recognition error:", event.error);
 			setLiveTranscript("");
-			setMood("neutral");
+			setMood(updateMoodFromScore(moodScore));
 		};
 	};
 
@@ -130,6 +158,19 @@ function App() {
 		}, 1000);
 
 		return () => clearInterval(interval);
+	}, []);
+
+	useEffect(() => {
+		const decayInterval = setInterval(() => {
+			setMoodScore((prev) => {
+				if (prev === 0) return 0;
+				const next = prev > 0 ? prev - 1 : prev + 1;
+				setMood(updateMoodFromScore(next));
+				return next;
+			});
+		}, 10_000);
+
+		return () => clearInterval(decayInterval);
 	}, []);
 
 	useEffect(() => {
@@ -155,7 +196,6 @@ function App() {
 
 			<Eyes mood={mood} isThinking={isThinking} />
 			<LogOverlay log={log} liveTranscript={liveTranscript} />
-
 			<MicButton onClick={startListening} />
 		</div>
 	);
