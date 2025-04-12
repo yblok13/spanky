@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import Eyes from "./components/Eyes";
 import { speak, primeSpeech } from "./logic/speak";
 import { detectMood } from "./logic/mood";
 import { fetchReply } from "./logic/gpt";
@@ -150,10 +151,7 @@ function App() {
 
 			{IS_DEV && <div className="dev-banner">[DEV] Double-tap to refresh</div>}
 
-			<div className="eyes">
-				<div className={`eye left ${isThinking ? "blinking" : ""} ${mood}`}></div>
-				<div className={`eye right ${isThinking ? "blinking" : ""} ${mood}`}></div>
-			</div>
+			<Eyes mood={mood} isThinking={isThinking} />
 
 			<div className="log-overlay">
 				{liveTranscript && <div className="live-transcript">{liveTranscript}</div>}
