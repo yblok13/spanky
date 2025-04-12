@@ -5,6 +5,7 @@ import { detectMood } from "./logic/mood";
 import { fetchReply } from "./logic/gpt";
 import "./App.css";
 import LogOverlay from "./components/LogOverlay";
+import MicButton from "./components/MicButton";
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = SpeechRecognition ? new SpeechRecognition() : null;
@@ -155,9 +156,7 @@ function App() {
 			<Eyes mood={mood} isThinking={isThinking} />
 			<LogOverlay log={log} liveTranscript={liveTranscript} />
 
-			<button className="mic-btn" onClick={startListening}>
-				🎙️
-			</button>
+			<MicButton onClick={startListening} />
 		</div>
 	);
 }
