@@ -1,8 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { speak, primeSpeech } from "./logic/speak";
+import { detectMood } from "./logic/mood";
+import { fetchReply } from "./logic/gpt";
 import "./App.css";
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+const IS_DEV = import.meta.env.DEV;
 
 function App() {
 	const [log, setLog] = useState([]);
@@ -12,85 +16,55 @@ function App() {
 	const [liveTranscript, setLiveTranscript] = useState("");
 	const [isMuted, setIsMuted] = useState(false);
 
-	// 🔊 Prime speech so Safari allows voice later
-	const primeSpeech = () => {
-		if (!window.speechSynthesis) return;
-		const u = new SpeechSynthesisUtterance("init");
-		u.volume = 0; // mute it
-		window.speechSynthesis.speak(u);
-	};
+	const lastInteractionRef = useRef(Date.now());
+	const idleCooldownRef = useRef(false);
 
-	// 🔊 Speak actual reply
-	const speak = (text) => {
-		if (!text || !window.speechSynthesis) return;
+	const idleTimeout = IS_DEV ? 30_000 : 180_000;
+	const idleCooldown = IS_DEV ? 45_000 : 300_000;
 
-		const speakNow = () => {
-			const utterance = new SpeechSynthesisUtterance(text);
-			utterance.lang = "en-US";
-			utterance.pitch = 1;
-			utterance.rate = 1;
-			utterance.volume = 1;
-			window.speechSynthesis.cancel();
-			window.speechSynthesis.speak(utterance);
-		};
-
-		if (speechSynthesis.getVoices().length === 0) {
-			speechSynthesis.onvoiceschanged = speakNow;
-		} else {
-			speakNow();
-		}
-	};
-
-	// Check if speech is possible
 	useEffect(() => {
 		if (!window.speechSynthesis) {
 			setIsMuted(true);
 			return;
 		}
-
 		const checkVoices = () => {
 			const voices = speechSynthesis.getVoices();
-			if (!voices || voices.length === 0) {
-				setIsMuted(true);
-			}
+			if (!voices || voices.length === 0) setIsMuted(true);
 		};
-
 		checkVoices();
 		speechSynthesis.onvoiceschanged = checkVoices;
 	}, []);
 
-	const getReply = async (userMessage) => {
+	const getReply = async (userMessage, isIdle = false) => {
 		try {
 			setIsThinking(true);
-			const res = await fetch("http://10.0.0.164:3001/chat", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ message: userMessage }),
-			});
+			const reply = await fetchReply(userMessage);
 
-			const data = await res.json();
-			const reply = data.reply;
+			setLog((prev) => [
+				...prev.slice(-3),
+				{
+					user: isIdle ? null : userMessage,
+					reply,
+				},
+			]);
 
-			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply }]);
 			setIsThinking(false);
 			if (!isMuted) speak(reply);
-
-			if (/sleep|tired|low power/i.test(reply)) setMood("sleepy");
-			else if (/angry|mad|frustrated|grr/i.test(reply)) setMood("angry");
-			else if (/yay|good|happy|awesome|online/i.test(reply)) setMood("happy");
-			else setMood("neutral");
+			lastInteractionRef.current = Date.now();
+			setMood(detectMood(reply));
 		} catch (err) {
-			const reply = "Spanky's brain is offline.";
-			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply }]);
+			const failReply = "Spanky's brain is offline.";
+			setLog((prev) => [...prev.slice(-3), { user: userMessage, reply: failReply }]);
 			setMood("offline");
 			setIsThinking(false);
-			if (!isMuted) speak(reply);
+			if (!isMuted) speak(failReply);
 		}
 	};
 
 	useEffect(() => {
 		setLog((prev) => [...prev.slice(-3), { user: null, reply: "Spanky online. Systems nominal." }]);
 		setMood("happy");
+		lastInteractionRef.current = Date.now();
 	}, []);
 
 	useEffect(() => {
@@ -99,7 +73,9 @@ function App() {
 	}, []);
 
 	const startListening = () => {
-		primeSpeech(); // 👈 Unlock speech support on iOS
+		primeSpeech();
+		lastInteractionRef.current = Date.now();
+		idleCooldownRef.current = false;
 
 		if (!recognition) {
 			alert("Voice recognition not supported on this device.");
@@ -135,6 +111,25 @@ function App() {
 	};
 
 	useEffect(() => {
+		const interval = setInterval(() => {
+			const now = Date.now();
+			if (!idleCooldownRef.current && now - lastInteractionRef.current > idleTimeout) {
+				idleCooldownRef.current = true;
+				lastInteractionRef.current = now;
+
+				const idlePrompt = "Generate a short, witty or curious idle thought a sarcastic robot dog might have while waiting around. Keep it under 20 words.";
+				getReply(idlePrompt, true);
+
+				setTimeout(() => {
+					idleCooldownRef.current = false;
+				}, idleCooldown);
+			}
+		}, 1000);
+
+		return () => clearInterval(interval);
+	}, []);
+
+	useEffect(() => {
 		let lastTap = 0;
 		const handleTap = () => {
 			const now = Date.now();
@@ -153,7 +148,7 @@ function App() {
 
 			<div className="clock">{time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
 
-			{import.meta.env.DEV && <div className="dev-banner">[DEV] Double-tap to refresh</div>}
+			{IS_DEV && <div className="dev-banner">[DEV] Double-tap to refresh</div>}
 
 			<div className="eyes">
 				<div className={`eye left ${isThinking ? "blinking" : ""} ${mood}`}></div>
