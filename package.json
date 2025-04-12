@@ -1,15 +1,18 @@
 {
-  "name": "spanky",
-  "version": "1.0.0",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+	"name": "spanky",
+	"version": "1.0.0",
+	"main": "index.js",
+	"directories": {
+		"doc": "docs"
+	},
+	"scripts": {
+		"ai": "node ai/personality/chat.js",
+		"dev:face": "cd controller/web && npm run dev",
+		"dev:server": "node controller/api/index.js",
+		"test-chat": "curl -X POST http://localhost:3001/chat -H \"Content-Type: application/json\" -d '{\"message\": \"What are you?\"}'"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"description": ""
 }
